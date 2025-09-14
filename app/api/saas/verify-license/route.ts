@@ -102,6 +102,8 @@ export async function POST(request: NextRequest) {
 
     // Check domain match (strict - no subdomains allowed)
     const clientDomain = extractDomain(clientData.websiteDomain);
+    console.log('Domain validation:', { requestDomain, clientDomain, match: requestDomain === clientDomain });
+    
     if (requestDomain !== clientDomain) {
       await db.insert(licenseVerificationLogs).values({
         id: uuidv4(),
@@ -117,7 +119,7 @@ export async function POST(request: NextRequest) {
 
       return NextResponse.json({
         valid: false,
-        error: 'Domain not authorized for this license'
+        error: `Domain not authorized for this license. Expected: ${clientDomain}, Got: ${requestDomain}`
       }, { status: 403, headers: corsHeaders });
     }
 
@@ -273,10 +275,12 @@ export async function GET(request: NextRequest) {
 
     // Check domain match (strict - no subdomains allowed)
     const clientDomain = extractDomain(clientData.websiteDomain);
+    console.log('GET Domain validation:', { requestDomain, clientDomain, match: requestDomain === clientDomain });
+    
     if (requestDomain !== clientDomain) {
       return NextResponse.json({
         valid: false,
-        error: 'Domain not authorized'
+        error: `Domain not authorized. Expected: ${clientDomain}, Got: ${requestDomain}`
       }, { status: 403, headers: corsHeaders });
     }
 
