@@ -1,58 +1,39 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-export async function GET(request: NextRequest) {
-  return NextResponse.json({
-    success: true,
-    message: 'SAAS API endpoint is accessible',
-    timestamp: new Date().toISOString(),
-    requestUrl: request.url,
-    method: request.method
-  }, { 
-    headers: {
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-    }
-  });
+// CORS headers for cross-origin requests
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+  'Access-Control-Max-Age': '86400',
+};
+
+// Handle preflight requests
+export async function OPTIONS() {
+  return NextResponse.json({}, { headers: corsHeaders });
 }
 
-export async function POST(request: NextRequest) {
+export async function GET(request: NextRequest) {
   try {
-    const body = await request.json();
-    
     return NextResponse.json({
       success: true,
-      message: 'SAAS API POST endpoint is working',
+      message: 'SAAS Admin Panel is operational',
       timestamp: new Date().toISOString(),
-      receivedData: body
-    }, { 
-      headers: {
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-        'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+      server: 'SAAS Admin Panel',
+      version: '1.0.0',
+      endpoints: {
+        licenseVerification: '/api/saas/verify-license',
+        clientManagement: '/api/saas/clients',
+        ping: '/api/test/ping'
       }
-    });
+    }, { headers: corsHeaders });
+    
   } catch (error) {
+    console.error('SAAS test endpoint error:', error);
+    
     return NextResponse.json({
       success: false,
-      error: error instanceof Error ? error.message : 'Unknown error'
-    }, { 
-      status: 400,
-      headers: {
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-        'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-      }
-    });
+      error: 'Internal server error'
+    }, { status: 500, headers: corsHeaders });
   }
-}
-
-export async function OPTIONS(request: NextRequest) {
-  return NextResponse.json({}, {
-    headers: {
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-    }
-  });
 }
