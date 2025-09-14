@@ -36,9 +36,21 @@ function getClientIP(request: NextRequest): string {
 export async function POST(request: NextRequest) {
   const startTime = Date.now();
   
+  console.log('License verification POST request received');
+  console.log('Request headers:', {
+    'content-type': request.headers.get('content-type'),
+    'origin': request.headers.get('origin'),
+    'user-agent': request.headers.get('user-agent')?.substring(0, 100)
+  });
+  
   try {
     const body = await request.json();
     const { licenseKey, domain } = body;
+    
+    console.log('License verification request:', { 
+      licenseKey: licenseKey?.substring(0, 10) + '...', 
+      domain 
+    });
 
     if (!licenseKey || !domain) {
       return NextResponse.json({

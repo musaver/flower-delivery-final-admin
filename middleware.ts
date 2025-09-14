@@ -9,6 +9,7 @@ export async function middleware(request: NextRequest) {
   // Skip middleware for API routes, static files, and NextAuth routes
   if (
     pathname.startsWith('/api/auth') ||
+    pathname.startsWith('/api/saas') ||  // SAAS license verification APIs
     pathname.startsWith('/api/test') ||
     pathname.startsWith('/api/debug') ||
     pathname.startsWith('/api/loyalty') ||
