@@ -1172,7 +1172,17 @@ export const saasClients = mysqlTable("saas_clients", {
   subscriptionEndDate: datetime("subscription_end_date"), // NULL for lifetime
   lastAccessDate: datetime("last_access_date"), // Last time client website was accessed
   lastVerificationDate: datetime("last_verification_date"), // Last license verification
+  licenseVerified: varchar("license_verified", { length: 10 }).default("no"), // License verification status: 'yes' or 'no'
   notes: text("notes"), // Admin notes about the client
+  
+  // API federation fields for tenant user access
+  apiBaseUrl: varchar("api_base_url", { length: 255 }).default(""), // Base URL for client API (e.g., https://client-domain.com)
+  authType: varchar("auth_type", { length: 10 }).notNull().default("HMAC"), // HMAC, OAUTH, MTLS
+  apiKey: varchar("api_key", { length: 255 }), // HMAC secret key for API authentication
+  publicKey: text("public_key"), // Public key for JWT/OAuth validation
+  apiStatus: varchar("api_status", { length: 10 }).default("active"), // active, paused
+  lastSeenAt: datetime("last_seen_at"), // Last successful API communication
+  
   createdAt: datetime("created_at").default(sql`CURRENT_TIMESTAMP`),
   updatedAt: datetime("updated_at").default(sql`CURRENT_TIMESTAMP`),
 });

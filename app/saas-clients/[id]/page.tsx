@@ -41,6 +41,15 @@ interface SaasClient {
   lastAccessDate: string | null;
   lastVerificationDate: string | null;
   notes: string | null;
+  
+  // API federation fields
+  apiBaseUrl: string;
+  authType: 'HMAC' | 'OAUTH' | 'MTLS';
+  apiKey?: string;
+  publicKey?: string | null;
+  apiStatus: 'active' | 'paused';
+  lastSeenAt: string | null;
+  
   createdAt: string;
   updatedAt: string;
 }
@@ -60,7 +69,9 @@ export default function ClientDetailsPage() {
   const [client, setClient] = useState<SaasClient | null>(null);
   const [loading, setLoading] = useState(true);
   const [showLicenseKey, setShowLicenseKey] = useState(false);
+  const [showApiKey, setShowApiKey] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
+  const [setupInstructions, setSetupInstructions] = useState<string[] | null>(null);
 
   useEffect(() => {
     fetchClient();
@@ -140,6 +151,37 @@ export default function ClientDetailsPage() {
     } catch (error) {
       console.error('Error regenerating license:', error);
       alert('Error regenerating license');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const regenerateApiKey = async () => {
+    if (!client) return;
+    
+    if (!confirm('Are you sure you want to regenerate the API key? The client will need to update their environment variables immediately.')) {
+      return;
+    }
+
+    setActionLoading(true);
+    try {
+      const response = await fetch(`/api/saas/clients/${clientId}/regenerate-api-key`, {
+        method: 'POST',
+      });
+
+      const data = await response.json();
+      
+      if (data.success) {
+        setClient(data.data);
+        setSetupInstructions(data.setupInstructions.instructions);
+        setShowApiKey(true);
+        alert('API key regenerated successfully! Check the setup instructions below.');
+      } else {
+        alert('Failed to regenerate API key: ' + data.error);
+      }
+    } catch (error) {
+      console.error('Error regenerating API key:', error);
+      alert('Error regenerating API key');
     } finally {
       setActionLoading(false);
     }
@@ -374,6 +416,91 @@ export default function ClientDetailsPage() {
             </CardContent>
           </Card>
 
+          {/* API Federation */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Globe className="w-5 h-5" />
+                API Federation
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div>
+                <div className="text-sm text-muted-foreground">API Base URL</div>
+                <div className="font-medium font-mono text-sm bg-gray-50 p-2 rounded">
+                  {client.apiBaseUrl || 'Not configured'}
+                </div>
+              </div>
+              
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <div className="text-sm text-muted-foreground">Auth Type</div>
+                  <div className="font-medium">{client.authType}</div>
+                </div>
+                <div>
+                  <div className="text-sm text-muted-foreground">API Status</div>
+                  <Badge className={client.apiStatus === 'active' ? 'bg-green-100 text-green-800' : 'bg-orange-100 text-orange-800'}>
+                    {client.apiStatus}
+                  </Badge>
+                </div>
+              </div>
+
+              {client.apiKey && (
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-sm text-muted-foreground">API Key</span>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setShowApiKey(!showApiKey)}
+                    >
+                      {showApiKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </Button>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <code className="bg-gray-100 px-3 py-2 rounded text-sm font-mono flex-1">
+                      {showApiKey ? client.apiKey : client.apiKey.substring(0, 8) + '*'.repeat(Math.max(0, client.apiKey.length - 8))}
+                    </code>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => copyToClipboard(client.apiKey!)}
+                    >
+                      <Copy className="w-4 h-4" />
+                    </Button>
+                  </div>
+                </div>
+              )}
+
+              <div>
+                <div className="text-sm text-muted-foreground">Last API Check</div>
+                <div className="font-medium">{formatDate(client.lastSeenAt)}</div>
+              </div>
+
+              <div className="flex gap-2">
+                <Button
+                  onClick={regenerateApiKey}
+                  disabled={actionLoading}
+                  variant="outline"
+                  className="flex-1"
+                >
+                  <RefreshCw className="mr-2 h-4 w-4" />
+                  Regenerate API Key
+                </Button>
+                <Link href={`/saas-users/${client.id}`}>
+                  <Button 
+                    variant="default" 
+                    className="w-full"
+                    disabled={!client.apiKey || client.apiStatus !== 'active'}
+                  >
+                    <Eye className="mr-2 h-4 w-4" />
+                    View Users
+                  </Button>
+                </Link>
+              </div>
+            </CardContent>
+          </Card>
+
           {/* Subscription Details */}
           <Card>
             <CardHeader>
@@ -422,6 +549,42 @@ export default function ClientDetailsPage() {
             </CardContent>
           </Card>
         </div>
+
+        {/* Setup Instructions */}
+        {setupInstructions && (
+          <Card className="mt-8 border-blue-200 bg-blue-50">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-blue-800">
+                <RefreshCw className="w-5 h-5" />
+                Setup Instructions for Client
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="bg-white p-4 rounded border">
+                <pre className="text-sm whitespace-pre-wrap font-mono">
+                  {setupInstructions.join('\n')}
+                </pre>
+              </div>
+              <div className="mt-4 flex gap-2">
+                <Button
+                  onClick={() => copyToClipboard(setupInstructions.join('\n'))}
+                  variant="outline"
+                  size="sm"
+                >
+                  <Copy className="mr-2 h-4 w-4" />
+                  Copy Instructions
+                </Button>
+                <Button
+                  onClick={() => setSetupInstructions(null)}
+                  variant="ghost"
+                  size="sm"
+                >
+                  Dismiss
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Timestamps */}
         <Card className="mt-8">

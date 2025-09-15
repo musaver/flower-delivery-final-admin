@@ -189,12 +189,13 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // License is valid - update last access and verification dates
+    // License is valid - update last access and verification dates, and set license_verified to 'yes'
     await db
       .update(saasClients)
       .set({ 
         lastAccessDate: new Date(),
         lastVerificationDate: new Date(),
+        licenseVerified: 'yes',
         updatedAt: new Date()
       })
       .where(eq(saasClients.id, clientData.id));

@@ -14,6 +14,11 @@ function generateLicenseKey(): string {
   return `${prefix}-${formatted}`;
 }
 
+// Generate a secure API key for HMAC authentication
+function generateApiKey(): string {
+  return crypto.randomBytes(32).toString('hex');
+}
+
 // GET - Fetch all clients
 export async function GET(request: NextRequest) {
   try {
@@ -144,6 +149,17 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // Generate API key for federated user access
+    const apiKey = generateApiKey();
+
+    // Prepare API Base URL - ensure it's a valid URL format
+    let apiBaseUrl = websiteUrl;
+    if (!apiBaseUrl.startsWith('http://') && !apiBaseUrl.startsWith('https://')) {
+      apiBaseUrl = `https://${apiBaseUrl}`;
+    }
+    // Remove trailing slash if present
+    apiBaseUrl = apiBaseUrl.replace(/\/$/, '');
+
     // Create new client
     const newClient = {
       id: uuidv4(),
@@ -161,7 +177,17 @@ export async function POST(request: NextRequest) {
       subscriptionEndDate: calculatedEndDate || null,
       lastAccessDate: null,
       lastVerificationDate: null,
+      licenseVerified: 'no' as const,
       notes: notes || null,
+      
+      // API federation fields - all properly initialized
+      apiBaseUrl: apiBaseUrl, // Formatted website URL for API access
+      authType: 'HMAC' as const, // Default authentication method
+      apiKey: apiKey, // Generated secure API key
+      publicKey: null, // Reserved for future JWT/OAuth support
+      apiStatus: 'active' as const, // API is ready to use
+      lastSeenAt: null, // Will be updated on first successful API call
+      
       createdAt: new Date(),
       updatedAt: new Date(),
     };
@@ -171,7 +197,43 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       success: true,
       data: newClient,
-      message: 'Client created successfully'
+      message: 'Client created successfully - API federation configured automatically',
+      setupInstructions: {
+        licenseKey: licenseKey!,
+        apiKey: apiKey,
+        apiBaseUrl: apiBaseUrl,
+        authType: 'HMAC',
+        instructions: [
+          "🎉 SaaS Client Created Successfully!",
+          "",
+          "📋 API Federation has been configured automatically:",
+          `   ✅ License Key: ${licenseKey!}`,
+          `   ✅ API Key: ${apiKey}`,
+          `   ✅ API Base URL: ${apiBaseUrl}`,
+          `   ✅ Auth Type: HMAC`,
+          `   ✅ API Status: Active`,
+          "",
+          "🔧 CLIENT SETUP REQUIRED:",
+          "",
+          "1. Add this to your client's .env.local file:",
+          `   ADMIN_API_SECRET=${apiKey}`,
+          "",
+          "2. Restart your client application to load the new environment variable",
+          "",
+          "3. The admin API endpoint is already implemented at:",
+          "   📁 /api/admin/users/route.ts",
+          "",
+          "4. Verify your API Base URL is accessible:",
+          `   🌐 ${apiBaseUrl}/api/admin/users`,
+          "",
+          "5. Test the connection:",
+          "   👀 Go to SaaS Users → View Users",
+          "",
+          "⚠️  IMPORTANT: Save this API key securely - it's required for admin access to your user data!",
+          "",
+          "📚 Need help? Check the SAAS_API_FEDERATION_SETUP.md guide"
+        ]
+      }
     }, { status: 201 });
 
   } catch (error) {
