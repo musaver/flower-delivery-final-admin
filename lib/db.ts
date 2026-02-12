@@ -13,7 +13,12 @@ const pool = mysql.createPool({
   },
   waitForConnections: true,
   connectionLimit: 10,
-  queueLimit: 0
+  maxIdle: 10,
+  idleTimeout: 60000,
+  queueLimit: 0,
+  enableKeepAlive: true,
+  keepAliveInitialDelay: 0,
+  connectTimeout: 30000
 });
 
 export const db = drizzle(pool, { schema, mode: "default" });
